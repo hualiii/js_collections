@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>分享屏幕</title>
+  </head>
+  <body>
+    <button id="btn">分享屏幕</button>
+  </body>
+  <script>
+    const channel = new BroadcastChannel("webrtc");
+    const btn = document.getElementById("btn");
+    const shareVideoHandle = async () => {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+      });
+      const peerA = new RTCPeerConnection();
+      // 添加本地媒体流
+      stream.getTracks().forEach((track) => {
+        peerA.addTrack(track, stream);
+      });
+      /**
+       * 媒体协商（交换SDP）
+       */
+      const offer = await peerA.createOffer();
+      await peerA.setLocalDescription(offer);
+      // 监听 ice 候选项事件
+      peerA.onicecandidate = (event) => {
+        if (event.candidate) {
+          const msg = {
+            type: "offer",
+            candidate: JSON.stringify(event.candidate),
+            offer: JSON.stringify(offer),
+          };
+          channel.postMessage(msg);
+        }
+      };
+      channel.addEventListener("message", (e) => {
+        const data = e.data;
+        if (data.type === "answer") {
+          peerA.setRemoteDescription(JSON.parse(data.answer));
+        }
+      });
+    };
+    btn.addEventListener("click", shareVideoHandle);
+  </script>
+</html>

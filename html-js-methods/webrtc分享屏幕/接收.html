@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>接收视频</title>
+  </head>
+  <body>
+    <video id="rightVideo" playsinline autoplay muted></video>
+  </body>
+  <script>
+    const channel = new BroadcastChannel("webrtc");
+    channel.addEventListener("message", async (e) => {
+      const peerB = new RTCPeerConnection();
+      peerB.ontrack = (event) => {
+        document.getElementById("rightVideo").srcObject = event.streams[0];
+      };
+      const data = e.data;
+      if (data.type === "offer") {
+        await peerB.setRemoteDescription(JSON.parse(data.offer));
+        peerB.addIceCandidate(JSON.parse(data.candidate));
+        const answer = await peerB.createAnswer();
+        await peerB.setLocalDescription(answer);
+        const msg = {
+          type: "answer",
+          answer: JSON.stringify(answer),
+        };
+        channel.postMessage(msg);
+      }
+      peerB.ad
+    });
+  </script>
+</html>
